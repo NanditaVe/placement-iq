@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PlacementIQ — Campus Placement Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&family=Unbounded:wght@400;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════
+   TOKENS
+═══════════════════════════════════════════ */
+:root{
+  --ink:#0a0d14;--ink2:#0f1520;--ink3:#161e2e;
+  --surface:#1b2436;--surface2:#212d42;
+  --line:rgba(120,180,255,.1);--line2:rgba(120,180,255,.18);
+  --sky:#4faaff;--sky2:#7dd3fc;--violet:#a78bfa;--emerald:#34d399;
+  --rose:#fb7185;--amber:#fbbf24;--cyan:#22d3ee;
+  --text:#dde8f7;--muted:#5a7399;--dim:#374a65;
+  --placed:#34d399;--fail:#fb7185;
+  --fh:'Unbounded',sans-serif;
+  --fb:'Space Grotesk',sans-serif;
+  --fm:'Fira Code',monospace;
+  --r8:8px;--r12:12px;--r16:16px;
+}
+
+/* ═══════════════════════════════════════════
+   BASE
+═══════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;}
+body{
+  background:var(--ink);color:var(--text);
+  font-family:var(--fb);font-size:14px;line-height:1.5;
+}
+
+/* grid noise texture overlay */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 10% 5%,rgba(79,170,255,.07) 0%,transparent 70%),
+    radial-gradient(ellipse 60% 50% at 90% 90%,rgba(167,139,250,.06) 0%,transparent 70%);
+}
+
+/* ═══════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════ */
+.shell{display:flex;height:100vh;position:relative;z-index:1;}
+
+/* ─── Sidebar ─── */
+.side{
+  width:220px;min-width:220px;
+  background:var(--ink2);
+  border-right:1px solid var(--line);
+  display:flex;flex-direction:column;
+  position:relative;overflow:hidden;
+}
+.side::before{
+  content:'';position:absolute;
+  top:-60px;left:-60px;
+  width:200px;height:200px;
+  background:radial-gradient(circle,rgba(79,170,255,.12),transparent 70%);
+  pointer-events:none;
+}
+
+.logo{padding:24px 20px 20px;border-bottom:1px solid var(--line);}
+.logo-mark{
+  font-family:var(--fh);font-size:18px;font-weight:900;letter-spacing:-.5px;
+  background:linear-gradient(135deg,var(--sky),var(--violet));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  display:block;margin-bottom:4px;
+}
+.logo-sub{font-family:var(--fm);font-size:9.5px;color:var(--muted);letter-spacing:.5px;}
+
+nav{padding:16px 10px;flex:1;}
+.n-group{margin-bottom:6px;}
+.n-label{font-size:8.5px;font-family:var(--fm);color:var(--dim);text-transform:uppercase;letter-spacing:1px;padding:0 10px;margin-bottom:4px;}
+.ni{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:var(--r8);
+  cursor:pointer;font-size:12.5px;font-weight:500;color:var(--muted);
+  transition:all .18s;margin-bottom:1px;
+  border:1px solid transparent;
+  position:relative;
+}
+.ni:hover{background:var(--ink3);color:var(--text);}
+.ni.on{
+  background:linear-gradient(135deg,rgba(79,170,255,.15),rgba(167,139,250,.1));
+  color:var(--sky);border-color:rgba(79,170,255,.2);
+}
+.ni.on::before{
+  content:'';position:absolute;left:0;top:20%;bottom:20%;
+  width:3px;background:linear-gradient(var(--sky),var(--violet));
+  border-radius:0 3px 3px 0;
+}
+.ni .ico{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+
+.side-foot{
+  padding:14px 16px;border-top:1px solid var(--line);
+  background:rgba(0,0,0,.2);
+}
+.pill{
+  background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);
+  color:var(--emerald);border-radius:20px;padding:5px 10px;
+  font-size:10px;font-family:var(--fm);display:flex;align-items:center;gap:6px;
+}
+.pill::before{content:'●';font-size:8px;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ─── Main ─── */
+.main{flex:1;overflow-y:auto;background:var(--ink);position:relative;}
+.page{display:none;padding:28px 32px;min-height:100%;animation:pIn .28s ease;}
+.page.on{display:block;}
+@keyframes pIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── Page header ─── */
+.ph{margin-bottom:26px;display:flex;align-items:flex-end;justify-content:space-between;}
+.ph-left h2{font-family:var(--fh);font-size:22px;font-weight:700;letter-spacing:-.5px;line-height:1.2;}
+.ph-left p{font-size:12px;color:var(--muted);margin-top:5px;}
+.ph-right{display:flex;gap:8px;align-items:center;}
+
+/* ═══════════════════════════════════════════
+   STAT CARDS
+═══════════════════════════════════════════ */
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;}
+.g52{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;}
+
+.card{
+  background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r12);padding:18px;
+  transition:border-color .2s,transform .15s;position:relative;overflow:hidden;
+}
+.card:hover{border-color:var(--line2);}
+
+.sc::after{
+  content:'';position:absolute;top:-40px;right:-40px;
+  width:100px;height:100px;border-radius:50%;
+  opacity:.06;pointer-events:none;
+}
+.sc.blue::after{background:var(--sky);}
+.sc.green::after{background:var(--emerald);}
+.sc.red::after{background:var(--rose);}
+.sc.violet::after{background:var(--violet);}
+.sc.amber::after{background:var(--amber);}
+
+.sc-lbl{font-size:10px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.sc-val{
+  font-family:var(--fh);font-size:26px;font-weight:700;line-height:1;
+  background:linear-gradient(135deg,var(--sky),var(--violet));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;
+}
+.sc.green .sc-val{background:linear-gradient(135deg,var(--emerald),#6ee7b7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sc.red .sc-val{background:linear-gradient(135deg,var(--rose),#fca5a5);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sc.violet .sc-val{background:linear-gradient(135deg,var(--violet),#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sc.amber .sc-val{background:linear-gradient(135deg,var(--amber),#fde68a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sc-sub{font-size:10.5px;color:var(--muted);}
+.sc-tag{
+  position:absolute;top:12px;right:12px;
+  font-size:9px;font-family:var(--fm);
+  background:var(--surface2);border:1px solid var(--line);
+  color:var(--muted);padding:2px 6px;border-radius:20px;
+}
+
+/* ═══════════════════════════════════════════
+   CHART CARDS
+═══════════════════════════════════════════ */
+.cc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r12);padding:20px;}
+.cc.span2{grid-column:1/-1;}
+.cc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+.cc-title{font-family:var(--fh);font-size:12.5px;font-weight:700;letter-spacing:-.2px;}
+.cc-badge{font-size:9px;font-family:var(--fm);color:var(--muted);background:var(--surface2);border:1px solid var(--line);padding:2px 7px;border-radius:20px;}
+canvas{max-height:230px !important;}
+
+/* ─── Feature importance ─── */
+.fi-row{margin-bottom:10px;}
+.fi-meta{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;}
+.fi-meta span:first-child{color:var(--text);}
+.fi-meta span:last-child{font-family:var(--fm);color:var(--sky);}
+.fi-track{height:5px;background:var(--ink3);border-radius:3px;overflow:hidden;}
+.fi-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--sky),var(--violet));transition:width 1.2s cubic-bezier(.16,1,.3,1);}
+
+/* ─── Model metric strip ─── */
+.ms{background:var(--surface);border:1px solid var(--line);border-radius:var(--r8);padding:14px;text-align:center;}
+.ms-lbl{font-size:9px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.ms-val{font-family:var(--fh);font-size:22px;font-weight:700;color:var(--sky);}
+.ms-sub{font-size:9.5px;color:var(--muted);margin-top:2px;}
+
+/* ─── Confusion matrix ─── */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.cm-cell{border-radius:var(--r8);padding:12px 8px;text-align:center;}
+.cm-n{font-family:var(--fh);font-size:24px;font-weight:700;}
+.cm-l{font-size:9px;font-family:var(--fm);text-transform:uppercase;margin-top:3px;letter-spacing:.3px;}
+.cm-tp{background:rgba(52,211,153,.12);color:var(--emerald);}
+.cm-tn{background:rgba(52,211,153,.07);color:var(--emerald);}
+.cm-fp{background:rgba(251,113,133,.12);color:var(--rose);}
+.cm-fn{background:rgba(251,113,133,.07);color:var(--rose);}
+
+/* ═══════════════════════════════════════════
+   TABLE
+═══════════════════════════════════════════ */
+.tctrl{display:flex;gap:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
+.srch{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r8);
+  padding:7px 13px;color:var(--text);font-size:12.5px;font-family:var(--fb);
+  outline:none;width:200px;transition:border-color .18s;
+}
+.srch:focus{border-color:var(--sky);}
+.srch::placeholder{color:var(--dim);}
+.fb2{
+  background:var(--surface);border:1px solid var(--line);color:var(--muted);
+  border-radius:var(--r8);padding:7px 13px;font-size:11.5px;cursor:pointer;
+  font-family:var(--fb);transition:all .18s;
+}
+.fb2:hover,.fb2.on{background:var(--surface2);color:var(--sky);border-color:rgba(79,170,255,.35);}
+
+.tw{background:var(--surface);border:1px solid var(--line);border-radius:var(--r12);overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+thead{background:var(--ink3);}
+th{text-align:left;padding:11px 14px;font-size:9.5px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;}
+td{padding:10px 14px;font-size:12.5px;border-top:1px solid var(--line);color:var(--text);white-space:nowrap;}
+tr:hover td{background:rgba(79,170,255,.04);}
+tr.click{cursor:pointer;}
+
+.bp{background:rgba(52,211,153,.1);color:var(--placed);border:1px solid rgba(52,211,153,.25);padding:2px 8px;border-radius:20px;font-size:10px;font-family:var(--fm);}
+.bn{background:rgba(251,113,133,.1);color:var(--fail);border:1px solid rgba(251,113,133,.25);padding:2px 8px;border-radius:20px;font-size:10px;font-family:var(--fm);}
+.conf-H{background:rgba(52,211,153,.1);color:var(--placed);border:1px solid rgba(52,211,153,.2);padding:2px 7px;border-radius:20px;font-size:10px;font-family:var(--fm);}
+.conf-M{background:rgba(251,191,36,.1);color:var(--amber);border:1px solid rgba(251,191,36,.2);padding:2px 7px;border-radius:20px;font-size:10px;font-family:var(--fm);}
+.conf-L{background:rgba(251,113,133,.1);color:var(--fail);border:1px solid rgba(251,113,133,.2);padding:2px 7px;border-radius:20px;font-size:10px;font-family:var(--fm);}
+.correct-row td:first-child{border-left:3px solid var(--emerald);}
+.wrong-row td:first-child{border-left:3px solid var(--rose);}
+
+.pag{display:flex;gap:6px;margin-top:14px;justify-content:center;align-items:center;flex-wrap:wrap;}
+.pb{background:var(--surface);border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:5px 11px;font-size:11.5px;cursor:pointer;transition:all .18s;}
+.pb:hover:not(:disabled){color:var(--sky);border-color:var(--sky);}
+.pb:disabled{opacity:.3;cursor:not-allowed;}
+.pb.on{background:var(--sky);color:var(--ink);border-color:var(--sky);}
+
+/* ═══════════════════════════════════════════
+   PREDICT
+═══════════════════════════════════════════ */
+.pred-wrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;}
+.fs{background:var(--surface);border:1px solid var(--line);border-radius:var(--r12);padding:22px;margin-bottom:16px;}
+.fs h3{font-family:var(--fh);font-size:13px;font-weight:700;color:var(--sky);margin-bottom:18px;letter-spacing:-.2px;}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+.fg{display:flex;flex-direction:column;gap:5px;}
+.fg label{font-size:9.5px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.fg input,.fg select{
+  background:var(--ink3);border:1px solid var(--line);border-radius:var(--r8);
+  padding:8px 11px;color:var(--text);font-size:12.5px;font-family:var(--fb);
+  outline:none;transition:border-color .18s;
+}
+.fg input:focus,.fg select:focus{border-color:var(--sky);}
+.fg select option{background:var(--ink3);}
+.run-btn{
+  width:100%;padding:13px;
+  background:linear-gradient(135deg,var(--sky),var(--violet));
+  border:none;border-radius:var(--r8);color:var(--ink);
+  font-size:13px;font-weight:700;font-family:var(--fh);cursor:pointer;
+  transition:opacity .18s,transform .1s;letter-spacing:-.2px;
+}
+.run-btn:hover{opacity:.9;transform:translateY(-1px);}
+.run-btn:active{transform:translateY(0);}
+
+/* result box */
+.rbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r12);padding:22px;display:none;}
+.rbox.on{display:block;animation:pIn .3s ease;}
+.rv{font-family:var(--fh);font-size:28px;font-weight:900;text-align:center;margin-bottom:6px;letter-spacing:-1px;}
+.rv.placed{color:var(--placed);}
+.rv.notplaced{color:var(--fail);}
+
+.ring-wrap{display:flex;justify-content:center;margin:16px 0;}
+.ring{width:108px;height:108px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;}
+.ring::before{content:'';position:absolute;inset:0;border-radius:50%;border:7px solid var(--ink3);}
+.ring-pct{font-family:var(--fh);font-size:22px;font-weight:700;position:relative;z-index:1;}
+.ring-lbl{font-size:8.5px;font-family:var(--fm);color:var(--muted);position:relative;z-index:1;text-transform:uppercase;letter-spacing:.5px;}
+
+.tip{
+  background:var(--ink3);border:1px solid var(--line);border-radius:var(--r8);
+  padding:9px 13px;font-size:12px;line-height:1.55;margin-bottom:7px;
+  transition:border-color .18s;
+}
+.tip:hover{border-color:var(--line2);}
+
+.chip{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:10px;font-family:var(--fm);margin-top:4px;}
+.chip.H{background:rgba(52,211,153,.1);color:var(--placed);border:1px solid rgba(52,211,153,.25);}
+.chip.M{background:rgba(251,191,36,.1);color:var(--amber);border:1px solid rgba(251,191,36,.25);}
+.chip.L{background:rgba(251,113,133,.1);color:var(--fail);border:1px solid rgba(251,113,133,.25);}
+
+/* ═══════════════════════════════════════════
+   UPLOAD PAGE
+═══════════════════════════════════════════ */
+.up-wrap{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:24px;}
+
+/* drop zone */
+.dz{
+  background:var(--surface);border:2px dashed rgba(79,170,255,.25);
+  border-radius:var(--r16);padding:40px 28px;text-align:center;
+  cursor:pointer;transition:all .25s;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:260px;
+}
+.dz:hover,.dz.drag{border-color:var(--sky);background:rgba(79,170,255,.05);}
+.dz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.dz-ico{font-size:52px;margin-bottom:16px;display:block;transition:transform .25s;}
+.dz:hover .dz-ico{transform:translateY(-4px);}
+.dz h3{font-family:var(--fh);font-size:16px;font-weight:700;margin-bottom:8px;letter-spacing:-.3px;}
+.dz p{font-size:12px;color:var(--muted);line-height:1.7;}
+.dz-btn{
+  margin-top:18px;padding:9px 24px;
+  background:linear-gradient(135deg,var(--sky),var(--violet));
+  border-radius:var(--r8);color:var(--ink);font-size:12.5px;
+  font-weight:700;font-family:var(--fh);display:inline-block;letter-spacing:-.2px;
+}
+
+/* file info strip */
+.file-strip{
+  background:rgba(79,170,255,.06);border:1px solid rgba(79,170,255,.2);
+  border-radius:var(--r8);padding:10px 14px;
+  display:none;align-items:center;gap:10px;margin-bottom:14px;
+}
+.file-strip.on{display:flex;}
+.file-name{font-family:var(--fm);font-size:12px;color:var(--sky);flex:1;}
+.file-size{font-size:11px;color:var(--muted);font-family:var(--fm);}
+
+/* schema panel */
+.schema-panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r12);padding:20px;}
+.schema-panel h4{font-family:var(--fh);font-size:12.5px;font-weight:700;color:var(--violet);margin-bottom:12px;}
+.col-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;}
+.col-chip{
+  background:var(--ink3);border:1px solid var(--line);border-radius:6px;
+  padding:6px 10px;font-size:11px;font-family:var(--fm);
+}
+.col-chip .alias{display:block;font-size:9.5px;color:var(--muted);margin-top:1px;}
+.note-box{
+  background:rgba(251,191,36,.06);border:1px solid rgba(251,191,36,.2);
+  border-radius:var(--r8);padding:10px 13px;font-size:11.5px;color:var(--amber);line-height:1.6;
+}
+
+/* progress bar */
+.prog-bar{height:4px;background:var(--ink3);border-radius:2px;overflow:hidden;margin:10px 0 4px;}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--sky),var(--violet));border-radius:2px;width:0;transition:width .5s ease;}
+
+/* results section */
+.results-section{display:none;}
+.results-section.on{display:block;animation:pIn .3s ease;}
+
+/* accuracy hero */
+.acc-hero{
+  background:linear-gradient(135deg,rgba(79,170,255,.1),rgba(167,139,250,.08));
+  border:1px solid rgba(79,170,255,.2);border-radius:var(--r16);
+  padding:28px;text-align:center;margin-bottom:20px;position:relative;overflow:hidden;
+}
+.acc-hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(79,170,255,.08),transparent);
+}
+.acc-hero-pct{
+  font-family:var(--fh);font-size:64px;font-weight:900;line-height:1;
+  background:linear-gradient(135deg,var(--sky),var(--violet));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  position:relative;letter-spacing:-2px;
+}
+.acc-hero-lbl{font-size:11px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:6px;position:relative;}
+
+/* upload charts grid */
+.up-charts{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;}
+.up-charts .cc.span2{grid-column:1/-1;}
+
+/* error box */
+.errb{
+  background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.25);
+  color:var(--fail);border-radius:var(--r8);padding:10px 14px;
+  font-size:12px;margin-bottom:14px;display:none;line-height:1.6;white-space:pre-wrap;
+}
+.errb.on{display:block;}
+
+/* ═══════════════════════════════════════════
+   LOADER
+═══════════════════════════════════════════ */
+.ld{display:none;align-items:center;justify-content:center;padding:36px;gap:12px;color:var(--muted);font-family:var(--fm);font-size:12px;}
+.ld.on{display:flex;}
+.spin{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--sky);border-radius:50%;animation:rot .6s linear infinite;}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* empty state */
+.empty{text-align:center;padding:36px;color:var(--muted);font-size:13px;}
+
+/* ═══════════════════════════════════════════
+   MODAL
+═══════════════════════════════════════════ */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(6px);}
+.overlay.on{display:flex;}
+.modal{background:var(--ink2);border:1px solid var(--line2);border-radius:var(--r16);width:660px;max-height:86vh;overflow-y:auto;padding:26px;animation:pIn .25s ease;}
+.modal-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+.modal-h h3{font-family:var(--fh);font-size:17px;font-weight:700;letter-spacing:-.3px;}
+.close-btn{background:var(--surface);border:1px solid var(--line);color:var(--muted);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .18s;}
+.close-btn:hover{color:var(--text);border-color:var(--sky);}
+.m3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:14px;}
+.mb2{background:var(--surface);border:1px solid var(--line);border-radius:var(--r8);padding:11px;text-align:center;}
+.mb2 .l{font-size:9px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;margin-bottom:3px;}
+.mb2 .v{font-family:var(--fh);font-size:19px;font-weight:700;color:var(--sky);}
+.mb2 .s{font-size:9.5px;color:var(--muted);font-family:var(--fm);margin-top:1px;}
+
+/* ═══════════════════════════════════════════
+   GITHUB
+═══════════════════════════════════════════ */
+.gh-row{display:flex;gap:10px;margin-bottom:22px;}
+.gh-inp{
+  flex:1;background:var(--surface);border:1px solid var(--line);border-radius:var(--r8);
+  padding:11px 15px;color:var(--text);font-size:13.5px;font-family:var(--fm);outline:none;transition:border-color .18s;
+}
+.gh-inp:focus{border-color:var(--sky);}
+.gh-inp::placeholder{color:var(--dim);}
+.gh-btn{background:linear-gradient(135deg,var(--sky),var(--violet));border:none;border-radius:var(--r8);color:var(--ink);font-size:12.5px;font-weight:700;font-family:var(--fh);padding:11px 22px;cursor:pointer;transition:opacity .18s;letter-spacing:-.2px;}
+.gh-btn:hover{opacity:.9;}
+.gh-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r12);padding:22px;display:none;margin-bottom:18px;}
+.gh-card.on{display:block;animation:pIn .3s ease;}
+.gh-top{display:flex;gap:18px;align-items:flex-start;margin-bottom:18px;}
+.gh-av{width:66px;height:66px;border-radius:10px;border:2px solid var(--line2);background:var(--ink3);}
+.gh-info{flex:1;}
+.gh-info h3{font-family:var(--fh);font-size:18px;font-weight:700;letter-spacing:-.4px;margin-bottom:2px;}
+.gh-un{font-family:var(--fm);font-size:12px;color:var(--sky);margin-bottom:3px;}
+.gh-bio{font-size:12.5px;color:var(--muted);}
+.gh-stats{display:flex;gap:14px;margin-top:9px;}
+.gh-st .n{font-family:var(--fh);font-size:16px;font-weight:700;}
+.gh-st .l{font-size:9.5px;color:var(--muted);font-family:var(--fm);}
+.gh-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.gh-sec{background:var(--ink3);border:1px solid var(--line);border-radius:var(--r8);padding:14px;}
+.gh-sec h4{font-family:var(--fh);font-size:12px;font-weight:700;color:var(--sky);margin-bottom:11px;}
+.ri{padding:7px 0;border-bottom:1px solid var(--line);}
+.ri:last-child{border-bottom:none;}
+.ri-name{font-size:12px;font-weight:600;color:var(--sky);font-family:var(--fm);}
+.ri-desc{font-size:11px;color:var(--muted);margin-top:1px;line-height:1.4;}
+.ri-meta{display:flex;gap:8px;margin-top:3px;font-size:10px;color:var(--muted);font-family:var(--fm);}
+.li{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+.ln{font-size:11.5px;width:84px;flex-shrink:0;}
+.lb{flex:1;height:5px;background:var(--ink2);border-radius:3px;overflow:hidden;}
+.lbf{height:100%;border-radius:3px;}
+.lp{font-size:10px;color:var(--muted);font-family:var(--fm);width:26px;text-align:right;}
+
+/* ─── scrollbar ─── */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--surface2);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:var(--muted);}
+
+/* action btn */
+.act-btn{background:var(--surface);border:1px solid var(--line);color:var(--sky);border-radius:var(--r8);padding:7px 13px;font-size:11.5px;cursor:pointer;font-family:var(--fb);transition:all .18s;}
+.act-btn:hover{background:var(--surface2);border-color:rgba(79,170,255,.35);}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ── Sidebar ── -->
+<aside class="side">
+  <div class="logo">
+    <span class="logo-mark">PlacementIQ</span>
+    <span class="logo-sub">80 / 20 SPLIT · GBC · 86.5%</span>
+  </div>
+  <nav>
+    <div class="n-group">
+      <div class="n-label">Analytics</div>
+      <div class="ni on" onclick="go('dashboard',this)"><span class="ico">⬛</span>Dashboard</div>
+      <div class="ni" onclick="go('students',this)"><span class="ico">◈</span>Students</div>
+    </div>
+    <div class="n-group">
+      <div class="n-label">Prediction</div>
+      <div class="ni" onclick="go('predict',this)"><span class="ico">◎</span>Predict Student</div>
+      <div class="ni" onclick="go('upload',this)"><span class="ico">⬆</span>Upload CSV</div>
+    </div>
+    <div class="n-group">
+      <div class="n-label">Tools</div>
+      <div class="ni" onclick="go('github',this)"><span class="ico">◆</span>GitHub Analyzer</div>
+    </div>
+  </nav>
+  <div class="side-foot">
+    <div class="pill">Model accuracy: 86.5%</div>
+  </div>
+</aside>
+
+<!-- ── Pages ── -->
+<main class="main">
+
+<!-- ════════════ DASHBOARD ════════════ -->
+<div id="page-dashboard" class="page on">
+  <div class="ph">
+    <div class="ph-left">
+      <h2>Placement Dashboard</h2>
+      <p>10,000 student records · 8,000 train / 2,000 test · Gradient Boosting Classifier</p>
+    </div>
+  </div>
+
+  <!-- stat cards -->
+  <div class="g4">
+    <div class="card sc blue"><div class="sc-tag">dataset</div><div class="sc-lbl">Total Students</div><div class="sc-val" id="d-total">—</div><div class="sc-sub">full dataset</div></div>
+    <div class="card sc green"><div class="sc-tag">train only</div><div class="sc-lbl">Placed</div><div class="sc-val" id="d-placed">—</div><div class="sc-sub" id="d-rate">—% placement rate</div></div>
+    <div class="card sc red"><div class="sc-tag">train only</div><div class="sc-lbl">Not Placed</div><div class="sc-val" id="d-np">—</div><div class="sc-sub">need improvement</div></div>
+    <div class="card sc violet"><div class="sc-tag">placed avg</div><div class="sc-lbl">Avg CGPA</div><div class="sc-val" id="d-cgpa">—</div><div class="sc-sub" id="d-cgpa2">vs — not placed</div></div>
+  </div>
+
+  <!-- model metrics strip -->
+  <div class="g52">
+    <div class="ms"><div class="ms-lbl">Accuracy</div><div class="ms-val" id="m-acc">—</div><div class="ms-sub">2000-row test set</div></div>
+    <div class="ms"><div class="ms-lbl">ROC-AUC</div><div class="ms-val" id="m-roc">—</div><div class="ms-sub">area under curve</div></div>
+    <div class="ms"><div class="ms-lbl">F1 Score</div><div class="ms-val" id="m-f1">—</div><div class="ms-sub">weighted avg</div></div>
+    <div class="ms"><div class="ms-lbl">5-Fold CV</div><div class="ms-val" id="m-cv">—</div><div class="ms-sub" id="m-cvs">± —</div></div>
+    <div class="ms"><div class="ms-lbl">Train / Test</div><div class="ms-val">80/20</div><div class="ms-sub" id="m-split">8k / 2k rows</div></div>
+  </div>
+
+  <!-- charts row 1 -->
+  <div class="g2">
+    <div class="cc">
+      <div class="cc-head"><span class="cc-title">CGPA Distribution</span><span class="cc-badge">grouped bar</span></div>
+      <canvas id="ch-cgpa"></canvas>
+    </div>
+    <div class="cc">
+      <div class="cc-head"><span class="cc-title">Placement Breakdown</span><span class="cc-badge">donut</span></div>
+      <canvas id="ch-donut"></canvas>
+    </div>
+  </div>
+
+  <!-- charts row 2 -->
+  <div class="g2">
+    <div class="cc">
+      <div class="cc-head"><span class="cc-title">Internships vs Placement</span><span class="cc-badge">grouped bar</span></div>
+      <canvas id="ch-int"></canvas>
+    </div>
+    <div class="cc">
+      <div class="cc-head"><span class="cc-title">Projects vs Placement</span><span class="cc-badge">grouped bar</span></div>
+      <canvas id="ch-proj"></canvas>
+    </div>
+  </div>
+
+  <!-- aptitude full width -->
+  <div class="cc" style="margin-bottom:20px">
+    <div class="cc-head"><span class="cc-title">Aptitude Score Distribution</span><span class="cc-badge">full range</span></div>
+    <canvas id="ch-apt"></canvas>
+  </div>
+
+  <!-- confusion matrix + feature importance -->
+  <div class="g2">
+    <div class="card">
+      <div class="cc-head" style="margin-bottom:6px"><span class="cc-title">Confusion Matrix</span><span class="cc-badge">test set · 2000 rows</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Rows = Actual · Cols = Predicted</div>
+      <div class="cm-grid">
+        <div class="cm-cell cm-tp"><div class="cm-n" id="cm-tp">—</div><div class="cm-l">True Placed TP</div></div>
+        <div class="cm-cell cm-fp"><div class="cm-n" id="cm-fp">—</div><div class="cm-l">False Placed FP</div></div>
+        <div class="cm-cell cm-fn"><div class="cm-n" id="cm-fn">—</div><div class="cm-l">False NotPlaced FN</div></div>
+        <div class="cm-cell cm-tn"><div class="cm-n" id="cm-tn">—</div><div class="cm-l">True NotPlaced TN</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="cc-head" style="margin-bottom:14px"><span class="cc-title">Feature Importance</span><span class="cc-badge">model weights</span></div>
+      <div id="fi-bars"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ STUDENTS ════════════ -->
+<div id="page-students" class="page">
+  <div class="ph">
+    <div class="ph-left"><h2>Student Records</h2><p>10,000 students · click any row for full detail + AI suggestions</p></div>
+  </div>
+  <div class="tctrl">
+    <input class="srch" type="text" placeholder="🔍  Search Student ID…" id="stu-q" oninput="sdebounce()">
+    <button class="fb2 on" id="sf-all" onclick="sf('all')">All</button>
+    <button class="fb2" id="sf-placed" onclick="sf('placed')">✅ Placed</button>
+    <button class="fb2" id="sf-not" onclick="sf('notplaced')">❌ Not Placed</button>
+    <span style="margin-left:auto;font-size:11px;color:var(--muted);font-family:var(--fm)" id="stu-lbl"></span>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Student ID</th><th>CGPA</th><th>Internships</th><th>Projects</th><th>Aptitude</th><th>Soft Skills</th><th>SSC</th><th>HSC</th><th>Status</th></tr></thead>
+      <tbody id="stu-body"></tbody>
+    </table>
+    <div class="ld" id="stu-ld"><div class="spin"></div> Loading students…</div>
+    <div class="empty" id="stu-empty" style="display:none">No students match your filter.</div>
+  </div>
+  <div class="pag" id="stu-pag"></div>
+</div>
+
+<!-- ════════════ PREDICT ════════════ -->
+<div id="page-predict" class="page">
+  <div class="ph">
+    <div class="ph-left"><h2>Predict Placement</h2><p>Enter student details for instant ML prediction + personalised improvement tips</p></div>
+  </div>
+  <div class="pred-wrap">
+    <div>
+      <div class="fs">
+        <h3>📚 Academic Scores</h3>
+        <div class="frow">
+          <div class="fg"><label>CGPA (5–10)</label><input type="number" id="p-cgpa" step=".01" min="5" max="10" value="7.5"></div>
+          <div class="fg"><label>SSC Marks</label><input type="number" id="p-ssc" step=".1" min="40" max="100" value="72"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>HSC Marks</label><input type="number" id="p-hsc" step=".1" min="40" max="100" value="70"></div>
+          <div class="fg"><label>Aptitude Score (40–100)</label><input type="number" id="p-apt" step=".1" min="40" max="100" value="72"></div>
+        </div>
+      </div>
+      <div class="fs">
+        <h3>🚀 Experience &amp; Skills</h3>
+        <div class="frow">
+          <div class="fg"><label>Internships</label><select id="p-int"><option>0</option><option selected>1</option><option>2</option><option>3</option></select></div>
+          <div class="fg"><label>Projects</label><select id="p-proj"><option>0</option><option>1</option><option selected>2</option><option>3</option><option>4</option></select></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>Workshops / Certs</label><select id="p-wk"><option>0</option><option selected>1</option><option>2</option><option>3</option></select></div>
+          <div class="fg"><label>Soft Skills (1–5)</label><input type="number" id="p-soft" step=".1" min="1" max="5" value="3.5"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><label>Extracurricular</label><select id="p-extra"><option>Yes</option><option>No</option></select></div>
+          <div class="fg"><label>Placement Training</label><select id="p-train"><option>Yes</option><option>No</option></select></div>
+        </div>
+        <button class="run-btn" onclick="runPredict()">🔮  Run Prediction</button>
+      </div>
+    </div>
+    <div>
+      <div class="rbox" id="pred-rbox">
+        <div style="text-align:center;margin-bottom:4px">
+          <div class="rv" id="pred-v">—</div>
+          <div class="chip" id="pred-chip" style="margin:0 auto 0;">—</div>
+          <div class="ring-wrap">
+            <div class="ring" id="pred-ring">
+              <div class="ring-pct" id="pred-pct">—%</div>
+              <div class="ring-lbl">Placed Prob.</div>
+            </div>
+          </div>
+        </div>
+        <div style="font-family:var(--fh);font-size:11.5px;font-weight:700;color:var(--violet);margin-bottom:9px;letter-spacing:-.2px">💡 Personalised Suggestions</div>
+        <div id="pred-tips"></div>
+      </div>
+      <div class="ld" id="pred-ld"><div class="spin"></div> Running model…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ UPLOAD CSV ════════════ -->
+<div id="page-upload" class="page">
+  <div class="ph">
+    <div class="ph-left"><h2>Upload CSV — Bulk Prediction</h2><p>Upload a CSV with student data → instant bulk ML predictions with accuracy metrics &amp; visual charts</p></div>
+  </div>
+
+  <div class="up-wrap">
+    <!-- Drop zone -->
+    <div>
+      <div class="dz" id="dz" ondragover="dzOver(event)" ondragleave="dzLeave()" ondrop="dzDrop(event)">
+        <input type="file" accept=".csv" onchange="handleFile(this.files[0])" id="file-in">
+        <span class="dz-ico">📂</span>
+        <h3>Drop your CSV here</h3>
+        <p>Drag &amp; drop or click to browse.<br>Supports the Kaggle placement dataset<br>format and any CSV with the required columns.</p>
+        <span class="dz-btn">Browse File</span>
+      </div>
+      <div class="file-strip" id="file-strip">
+        <span style="font-size:20px">📄</span>
+        <span class="file-name" id="file-name">—</span>
+        <span class="file-size" id="file-size">—</span>
+      </div>
+    </div>
+
+    <!-- Schema panel -->
+    <div class="schema-panel">
+      <h4>📋 Required Columns</h4>
+      <div class="col-grid">
+        <div class="col-chip">CGPA<span class="alias">or cgpa</span></div>
+        <div class="col-chip">Internships<span class="alias">or internship</span></div>
+        <div class="col-chip">Projects<span class="alias">or project</span></div>
+        <div class="col-chip">Workshops_Certifications<span class="alias">workshops / certifications</span></div>
+        <div class="col-chip">AptitudeTestScore<span class="alias">or aptitude</span></div>
+        <div class="col-chip">SoftSkillsRating<span class="alias">or soft_skills</span></div>
+        <div class="col-chip">ExtracurricularActivities<span class="alias">Yes / No</span></div>
+        <div class="col-chip">PlacementTraining<span class="alias">Yes / No</span></div>
+        <div class="col-chip">SSC_Marks<span class="alias">or ssc</span></div>
+        <div class="col-chip">HSC_Marks<span class="alias">or hsc</span></div>
+      </div>
+      <div class="note-box">
+        💡 Include a <strong>PlacementStatus</strong> column (Placed / NotPlaced) to unlock accuracy metrics, confusion matrix, precision, recall, and F1 score on your data.<br><br>
+        Max 5,000 rows per upload. Column names are case-insensitive.
+      </div>
+    </div>
+  </div>
+
+  <div class="errb" id="up-err"></div>
+  <div class="ld" id="up-ld"><div class="spin"></div> Predicting all rows…</div>
+  <div class="prog-bar" id="prog-bar" style="display:none"><div class="prog-fill" id="prog-fill"></div></div>
+
+  <!-- ── RESULTS SECTION ── -->
+  <div class="results-section" id="up-results">
+
+    <!-- Accuracy hero (only if ground truth) -->
+    <div id="gt-hero" style="display:none">
+      <div class="acc-hero">
+        <div class="acc-hero-pct" id="u-acc-pct">—%</div>
+        <div class="acc-hero-lbl">Accuracy on uploaded data</div>
+      </div>
+      <div class="g4" style="margin-bottom:20px">
+        <div class="card sc green"><div class="sc-lbl">True Placed (TP)</div><div class="sc-val" id="u-tp">—</div></div>
+        <div class="card sc green"><div class="sc-lbl">True NotPlaced (TN)</div><div class="sc-val" id="u-tn">—</div></div>
+        <div class="card sc red"><div class="sc-lbl">False Placed (FP)</div><div class="sc-val" id="u-fp">—</div></div>
+        <div class="card sc red"><div class="sc-lbl">False NotPlaced (FN)</div><div class="sc-val" id="u-fn">—</div></div>
+      </div>
+      <div class="g3" style="margin-bottom:20px">
+        <div class="card sc blue"><div class="sc-lbl">Precision</div><div class="sc-val" id="u-prec">—</div><div class="sc-sub">of predicted placed</div></div>
+        <div class="card sc blue"><div class="sc-lbl">Recall</div><div class="sc-val" id="u-rec">—</div><div class="sc-sub">actual placed found</div></div>
+        <div class="card sc violet"><div class="sc-lbl">F1 Score</div><div class="sc-val" id="u-f1">—</div><div class="sc-sub">harmonic mean</div></div>
+      </div>
+    </div>
+
+    <!-- Summary cards (always) -->
+    <div class="g4" style="margin-bottom:20px">
+      <div class="card sc blue"><div class="sc-lbl">Total Rows</div><div class="sc-val" id="u-total">—</div></div>
+      <div class="card sc green"><div class="sc-lbl">Predicted Placed</div><div class="sc-val" id="u-placed">—</div><div class="sc-sub" id="u-prate"></div></div>
+      <div class="card sc red"><div class="sc-lbl">Predicted Not Placed</div><div class="sc-val" id="u-nplaced">—</div></div>
+      <div class="card sc amber"><div class="sc-lbl">Parse Errors</div><div class="sc-val" id="u-errs">—</div><div class="sc-sub">rows with bad data</div></div>
+    </div>
+
+    <!-- Dashboard-style charts -->
+    <div class="g2">
+      <div class="cc">
+        <div class="cc-head"><span class="cc-title">CGPA Distribution</span><span class="cc-badge">grouped bar</span></div>
+        <canvas id="up-ch-cgpa"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-head"><span class="cc-title">Placement Breakdown</span><span class="cc-badge">donut</span></div>
+        <canvas id="up-ch-donut"></canvas>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="cc">
+        <div class="cc-head"><span class="cc-title">Internships vs Placement</span><span class="cc-badge">grouped bar</span></div>
+        <canvas id="up-ch-int"></canvas>
+      </div>
+      <div class="cc">
+        <div class="cc-head"><span class="cc-title">Projects vs Placement</span><span class="cc-badge">grouped bar</span></div>
+        <canvas id="up-ch-proj"></canvas>
+      </div>
+    </div>
+
+    <div class="cc" style="margin-bottom:20px">
+      <div class="cc-head"><span class="cc-title">Aptitude Score Distribution</span><span class="cc-badge">full range</span></div>
+      <canvas id="up-ch-apt"></canvas>
+    </div>
+
+    <div class="cc span2" id="up-cm-wrap" style="display:none;margin-bottom:20px">
+      <div class="cc-head"><span class="cc-title">Actual vs Predicted (Confusion Matrix — uploaded data)</span><span class="cc-badge">matrix</span></div>
+      <div class="cm-grid">
+        <div class="cm-cell cm-tp"><div class="cm-n" id="ucm-tp">—</div><div class="cm-l">True Placed TP</div></div>
+        <div class="cm-cell cm-fp"><div class="cm-n" id="ucm-fp">—</div><div class="cm-l">False Placed FP</div></div>
+        <div class="cm-cell cm-fn"><div class="cm-n" id="ucm-fn">—</div><div class="cm-l">False NotPlaced FN</div></div>
+        <div class="cm-cell cm-tn"><div class="cm-n" id="ucm-tn">—</div><div class="cm-l">True NotPlaced TN</div></div>
+      </div>
+    </div>
+
+    <div class="cc span2" style="margin-bottom:20px">
+      <div class="cc-head"><span class="cc-title">Feature Importance</span><span class="cc-badge">model weights</span></div>
+      <div id="up-fi-bars"></div>
+    </div>
+
+    <!-- Results table -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-family:var(--fh);font-size:14px;font-weight:700;letter-spacing:-.3px">Prediction Results</div>
+      <div style="display:flex;gap:8px">
+        <span style="font-size:11px;color:var(--muted);align-self:center;font-family:var(--fm)" id="up-legend"></span>
+        <button class="act-btn" onclick="downloadCSV()">⬇ Download CSV</button>
+      </div>
+    </div>
+    <div class="tw" style="margin-bottom:6px">
+      <table><thead id="ur-head"></thead><tbody id="ur-body"></tbody></table>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:var(--fm)">Showing first 200 rows · download full CSV above</div>
+  </div>
+</div>
+
+<!-- ════════════ GITHUB ════════════ -->
+<div id="page-github" class="page">
+  <div class="ph">
+    <div class="ph-left"><h2>GitHub Profile Analyzer</h2><p>Enter any GitHub username for technical assessment, repo insights, and improvement tips</p></div>
+  </div>
+  <div class="gh-row">
+    <input class="gh-inp" id="gh-in" type="text" placeholder="Enter GitHub username  e.g. akshatagr02" onkeydown="if(event.key==='Enter')analyzeGH()">
+    <button class="gh-btn" onclick="analyzeGH()">🔍  Analyze</button>
+  </div>
+  <div class="errb" id="gh-err"></div>
+  <div class="ld" id="gh-ld"><div class="spin"></div> Fetching GitHub profile…</div>
+  <div class="gh-card" id="gh-card">
+    <div class="gh-top">
+      <img class="gh-av" id="gh-av" src="" alt="">
+      <div class="gh-info">
+        <h3 id="gh-name"></h3>
+        <div class="gh-un" id="gh-un"></div>
+        <div class="gh-bio" id="gh-bio"></div>
+        <div class="gh-stats">
+          <div class="gh-st"><div class="n" id="gh-fol"></div><div class="l">Followers</div></div>
+          <div class="gh-st"><div class="n" id="gh-fing"></div><div class="l">Following</div></div>
+          <div class="gh-st"><div class="n" id="gh-repo"></div><div class="l">Repos</div></div>
+          <div class="gh-st"><div class="n" id="gh-star"></div><div class="l">Stars</div></div>
+        </div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:20px;flex-shrink:0">
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <svg width="76" height="76" viewBox="0 0 76 76">
+            <circle cx="38" cy="38" r="32" fill="none" stroke="#1b2436" stroke-width="7"/>
+            <circle cx="38" cy="38" r="32" fill="none" stroke="url(#g1)" stroke-width="7"
+              stroke-dasharray="201" id="sc-arc" stroke-dashoffset="201"
+              stroke-linecap="round" transform="rotate(-90 38 38)" style="transition:stroke-dashoffset 1s ease"/>
+            <defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#4faaff"/><stop offset="100%" stop-color="#a78bfa"/>
+            </linearGradient></defs>
+            <text x="38" y="43" text-anchor="middle" font-size="13" font-weight="700"
+              fill="#dde8f7" font-family="Unbounded,sans-serif" id="sc-txt">0</text>
+          </svg>
+          <div style="font-size:9px;color:var(--muted);font-family:var(--fm);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Github Score</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <svg width="76" height="76" viewBox="0 0 76 76">
+            <circle cx="38" cy="38" r="32" fill="none" stroke="#1b2436" stroke-width="7"/>
+            <circle cx="38" cy="38" r="32" fill="none" stroke="url(#g2)" stroke-width="7"
+              stroke-dasharray="201" id="pp-arc" stroke-dashoffset="201"
+              stroke-linecap="round" transform="rotate(-90 38 38)" style="transition:stroke-dashoffset 1s ease"/>
+            <defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#6ee7b7"/>
+            </linearGradient></defs>
+            <text x="38" y="43" text-anchor="middle" font-size="13" font-weight="700"
+              fill="#dde8f7" font-family="Unbounded,sans-serif" id="pp-txt">0</text>
+          </svg>
+          <div style="font-size:9px;color:var(--muted);font-family:var(--fm);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Placement Score</div>
+        </div>
+      </div>
+    </div>
+    <div class="gh-2col">
+      <div class="gh-sec"><h4>🔤 Top Languages</h4><div id="gh-langs"></div></div>
+      <div class="gh-sec"><h4>⭐ Top Repositories</h4><div id="gh-repos-list"></div></div>
+    </div>
+    <div class="card" style="padding:18px">
+      <div style="font-family:var(--fh);font-size:12px;font-weight:700;color:var(--amber);margin-bottom:10px">🛠 GitHub Profile Improvements</div>
+      <div id="gh-impr"></div>
+    </div>
+    <div class="card" style="padding:18px;margin-top:12px">
+      <div style="font-family:var(--fh);font-size:12px;font-weight:700;color:var(--violet);margin-bottom:10px">⭐ Combined GitHub + Placement Strategy</div>
+      <div id="gh-combined"></div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- Student modal -->
+<div class="overlay" id="stu-mo">
+  <div class="modal">
+    <div class="modal-h"><h3 id="mo-sid">Student</h3><button class="close-btn" onclick="closeMo()">✕</button></div>
+    <div id="mo-body"></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════
+   GLOBAL STATE
+═══════════════════════════════════════ */
+const API = '';
+const LC  = ['#4faaff','#a78bfa','#34d399','#fbbf24','#fb7185','#22d3ee','#f97316'];
+let charts = {}, uResults = [], uHasGT = false;
+let sState = {page:1,per:20,filter:'all',search:'',loaded:false};
+let sdTmr;
+
+/* chart defaults */
+Chart.defaults.font.family = 'Space Grotesk';
+Chart.defaults.color       = '#5a7399';
+
+const CO = {
+  responsive:true,
+  plugins:{legend:{labels:{color:'#5a7399',font:{size:11}}}},
+  scales:{
+    x:{ticks:{color:'#374a65',font:{size:10}},grid:{color:'rgba(79,170,255,.07)'}},
+    y:{ticks:{color:'#374a65'},grid:{color:'rgba(79,170,255,.07)'},beginAtZero:true}
+  }
+};
+
+/* ═══════════════════════════════════════
+   NAV
+═══════════════════════════════════════ */
+function go(id, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  el.classList.add('on');
+  if(id==='students'&&!sState.loaded) loadStudents();
+}
+
+/* ═══════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════ */
+async function loadDashboard(){
+  const res  = await fetch(`${API}/api/stats`);
+  const data = await res.json();
+  const s = data.summary;
+
+  document.getElementById('d-total').textContent  = s.total.toLocaleString();
+  document.getElementById('d-placed').textContent = s.placed.toLocaleString();
+  document.getElementById('d-np').textContent     = s.not_placed.toLocaleString();
+  document.getElementById('d-rate').textContent   = `${s.placement_rate}% placement rate`;
+  document.getElementById('d-cgpa').textContent   = s.avg_cgpa_placed;
+  document.getElementById('d-cgpa2').textContent  = `vs ${s.avg_cgpa_not_placed} not placed`;
+
+  document.getElementById('m-acc').textContent  = s.model_accuracy+'%';
+  document.getElementById('m-roc').textContent  = s.model_roc_auc+'%';
+  document.getElementById('m-f1').textContent   = s.model_f1+'%';
+  document.getElementById('m-cv').textContent   = s.cv_mean+'%';
+  document.getElementById('m-cvs').textContent  = `± ${s.cv_std}%`;
+  document.getElementById('m-split').textContent= `${s.train_size/1000|0}k / ${s.test_size/1000|0}k rows`;
+
+  const cm = s.confusion_matrix || [[0,0],[0,0]];
+  document.getElementById('cm-tn').textContent = cm[0][0];
+  document.getElementById('cm-fp').textContent = cm[0][1];
+  document.getElementById('cm-fn').textContent = cm[1][0];
+  document.getElementById('cm-tp').textContent = cm[1][1];
+
+  mkBar('ch-cgpa', data.cgpa_distribution, 'CGPA Range');
+  mkBar('ch-int',  data.internship_distribution, 'Internships');
+  mkBar('ch-proj', data.projects_distribution, 'Projects');
+  mkBar('ch-apt',  data.aptitude_distribution, 'Aptitude Score');
+
+  if(charts.donut) charts.donut.destroy();
+  charts.donut = new Chart(document.getElementById('ch-donut'),{
+    type:'doughnut',
+    data:{labels:['Placed','Not Placed'],
+          datasets:[{data:[s.placed,s.not_placed],
+            backgroundColor:['rgba(52,211,153,.78)','rgba(251,113,133,.78)'],
+            borderColor:['#34d399','#fb7185'],borderWidth:2,hoverOffset:6}]},
+    options:{responsive:true,cutout:'68%',plugins:{legend:{labels:{color:'#5a7399',font:{size:12}}}}}
+  });
+
+  /* Feature importance */
+  const fi  = s.feature_importance;
+  const lbl = {CGPA:'CGPA',Internships:'Internships',Projects:'Projects',Workshops_Certifications:'Workshops / Certs',AptitudeTestScore:'Aptitude Test',SoftSkillsRating:'Soft Skills',ExtracurricularActivities_enc:'Extracurricular',PlacementTraining_enc:'Placement Training',SSC_Marks:'SSC Marks',HSC_Marks:'HSC Marks'};
+  const mx  = Math.max(...Object.values(fi));
+  document.getElementById('fi-bars').innerHTML = Object.entries(fi).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+    <div class="fi-row">
+      <div class="fi-meta"><span>${lbl[k]||k}</span><span>${(v*100).toFixed(1)}%</span></div>
+      <div class="fi-track"><div class="fi-fill" style="width:${(v/mx*100).toFixed(1)}%"></div></div>
+    </div>`).join('');
+}
+
+function mkBar(id, d, xLabel){
+  if(charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id),{
+    type:'bar',
+    data:{labels:d.labels,datasets:[
+      {label:'Placed',data:d.placed,backgroundColor:'rgba(52,211,153,.7)',borderColor:'#34d399',borderWidth:1,borderRadius:4},
+      {label:'Not Placed',data:d.not_placed,backgroundColor:'rgba(251,113,133,.65)',borderColor:'#fb7185',borderWidth:1,borderRadius:4}
+    ]},
+    options:{...CO,plugins:{...CO.plugins},scales:{...CO.scales,x:{...CO.scales.x,title:{display:true,text:xLabel,color:'#374a65',font:{size:10}}}}}
+  });
+}
+
+/* ═══════════════════════════════════════
+   STUDENTS
+═══════════════════════════════════════ */
+function sf(f){
+  sState.filter=f; sState.page=1;
+  ['all','placed','not'].forEach(x=>document.getElementById('sf-'+x).classList.remove('on'));
+  document.getElementById('sf-'+f).classList.add('on');
+  loadStudents();
+}
+function sdebounce(){clearTimeout(sdTmr);sdTmr=setTimeout(()=>{sState.search=document.getElementById('stu-q').value;sState.page=1;loadStudents();},320);}
+
+async function loadStudents(){
+  const {page,per,filter,search}=sState;
+  const status = filter==='placed'?'Placed':filter==='notplaced'?'NotPlaced':'';
+  document.getElementById('stu-ld').classList.add('on');
+  document.getElementById('stu-empty').style.display='none';
+  document.getElementById('stu-body').innerHTML='';
+  const res = await fetch(`${API}/api/students?page=${page}&per_page=${per}&status=${status}&search=${encodeURIComponent(search)}`);
+  const data = await res.json();
+  document.getElementById('stu-ld').classList.remove('on');
+  sState.loaded=true;
+  document.getElementById('stu-lbl').textContent = `${data.total.toLocaleString()} students`;
+  if(!data.students.length){document.getElementById('stu-empty').style.display='block';return;}
+  document.getElementById('stu-body').innerHTML = data.students.map(s=>`
+    <tr class="click" onclick="openStu('${s.StudentID}')">
+      <td><span style="font-family:var(--fm);color:var(--sky);font-size:11.5px">${s.StudentID}</span></td>
+      <td><strong>${s.CGPA}</strong></td><td>${s.Internships}</td><td>${s.Projects}</td>
+      <td>${s.AptitudeTestScore}</td><td>${s.SoftSkillsRating}/5</td>
+      <td>${s.SSC_Marks}</td><td>${s.HSC_Marks}</td>
+      <td><span class="${s.PlacementStatus==='Placed'?'bp':'bn'}">${s.PlacementStatus}</span></td>
+    </tr>`).join('');
+  mkPag(data.page, data.total_pages);
+}
+
+function mkPag(cur,tot){
+  const p=document.getElementById('stu-pag');
+  if(tot<=1){p.innerHTML='';return;}
+  let h=`<button class="pb" onclick="gop(${cur-1})" ${cur===1?'disabled':''}>‹</button>`;
+  const pages=[];
+  for(let i=1;i<=tot;i++){
+    if(i===1||i===tot||(i>=cur-2&&i<=cur+2)) pages.push(i);
+    else if(pages[pages.length-1]!=='…') pages.push('…');
+  }
+  pages.forEach(pg=>{
+    if(pg==='…') h+=`<span style="color:var(--dim);font-size:12px">…</span>`;
+    else h+=`<button class="pb ${pg===cur?'on':''}" onclick="gop(${pg})">${pg}</button>`;
+  });
+  h+=`<button class="pb" onclick="gop(${cur+1})" ${cur===tot?'disabled':''}>›</button>`;
+  p.innerHTML=h;
+}
+function gop(p){sState.page=p;loadStudents();}
+
+function openUploadRow(idx){
+  const row = uResults[idx];
+  if(!row) return;
+  const probability = Number(row._probability || 0) / 100;
+  const prediction = {label: row._prediction || 'Unknown', probability};
+  const suggestions = row._suggestions || (row._suggestion ? [row._suggestion] : []);
+  openDetailModal({
+    title: `Uploaded Row ${idx + 1}`,
+    record: row,
+    prediction,
+    suggestions,
+    source: 'Uploaded CSV',
+    rowIndex: idx + 1,
+    useUploadLayout: true,
+  });
+}
+
+function openDetailModal({title, record, prediction, suggestions, percentiles = {}, source = '', rowIndex = null, useUploadLayout = false}){
+  document.getElementById('stu-mo').classList.add('on');
+  document.getElementById('mo-sid').textContent = title;
+
+  const isPlacedPrediction = prediction?.label === 'Placed' || prediction?.label === 'Predicted Yes';
+  const mainLabel = useUploadLayout ? (isPlacedPrediction ? 'Predicted Yes' : 'Predicted No') : (prediction?.label || 'Unknown');
+  const labelColor = isPlacedPrediction ? 'var(--placed)' : 'var(--fail)';
+  const probabilityText = prediction ? `${(prediction.probability * 100).toFixed(1)}% placement probability` : '';
+  const statusTag = record?._placement_status_tag || (isPlacedPrediction ? 'predictedYes' : 'predictedNo');
+  const statusLabel = statusTag === 'predictedYes' ? 'Predicted Yes' : 'Predicted No';
+  const statusClass = statusTag === 'predictedYes' ? 'bp' : 'bn';
+
+  const rowTitle = rowIndex ? `Row ${rowIndex}` : '';
+  const studentId = record?.StudentID || record?.StudentId || record?.student_id || rowTitle || 'Student';
+  const renderedPercentile = (value) => value ?? '—';
+  const rowData = record || {};
+  const fieldRows = useUploadLayout
+    ? `
+    <div class="m3">
+      <div class="mb2"><div class="l">CGPA</div><div class="v">${rowData.CGPA ?? '—'}</div><div class="s">${renderedPercentile(percentiles.CGPA)}th %ile</div></div>
+      <div class="mb2"><div class="l">Internships</div><div class="v">${rowData.Internships ?? '—'}</div><div class="s">out of 3</div></div>
+      <div class="mb2"><div class="l">Projects</div><div class="v">${rowData.Projects ?? '—'}</div><div class="s">out of 4</div></div>
+      <div class="mb2"><div class="l">Aptitude</div><div class="v">${rowData.AptitudeTestScore ?? '—'}</div><div class="s">${renderedPercentile(percentiles.AptitudeTestScore)}th %ile</div></div>
+      <div class="mb2"><div class="l">Soft Skills</div><div class="v">${rowData.SoftSkillsRating ?? '—'}</div><div class="s">${renderedPercentile(percentiles.SoftSkillsRating)}th %ile</div></div>
+      <div class="mb2"><div class="l">Workshops</div><div class="v">${rowData.Workshops_Certifications ?? '—'}</div><div class="s">certifications</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">
+      <div class="mb2"><div class="l">SSC Marks</div><div class="v" style="font-size:17px">${rowData.SSC_Marks ?? '—'}%</div><div class="s">${renderedPercentile(percentiles.SSC_Marks)}th %ile</div></div>
+      <div class="mb2"><div class="l">HSC Marks</div><div class="v" style="font-size:17px">${rowData.HSC_Marks ?? '—'}%</div><div class="s">${renderedPercentile(percentiles.HSC_Marks)}th %ile</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px">
+      <div class="mb2"><div class="l">Extracurricular</div><div class="v" style="font-size:14px;color:${String(rowData.ExtracurricularActivities) === 'Yes' ? 'var(--placed)' : 'var(--fail)'}">${rowData.ExtracurricularActivities ?? '—'}</div></div>
+      <div class="mb2"><div class="l">Placement Training</div><div class="v" style="font-size:14px;color:${String(rowData.PlacementTraining) === 'Yes' ? 'var(--placed)' : 'var(--fail)'}">${rowData.PlacementTraining ?? '—'}</div></div>
+    </div>`
+    : `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">
+      <div class="mb2"><div class="l">CGPA</div><div class="v">${rowData.CGPA ?? '—'}</div><div class="s">${renderedPercentile(percentiles.CGPA)}th %ile</div></div>
+      <div class="mb2"><div class="l">Internships</div><div class="v">${rowData.Internships ?? '—'}</div><div class="s">out of 3</div></div>
+      <div class="mb2"><div class="l">Projects</div><div class="v">${rowData.Projects ?? '—'}</div><div class="s">out of 4</div></div>
+      <div class="mb2"><div class="l">Aptitude</div><div class="v">${rowData.AptitudeTestScore ?? '—'}</div><div class="s">${renderedPercentile(percentiles.AptitudeTestScore)}th %ile</div></div>
+      <div class="mb2"><div class="l">Soft Skills</div><div class="v">${rowData.SoftSkillsRating ?? '—'}</div><div class="s">${renderedPercentile(percentiles.SoftSkillsRating)}th %ile</div></div>
+      <div class="mb2"><div class="l">Workshops</div><div class="v">${rowData.Workshops_Certifications ?? '—'}</div><div class="s">certifications</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">
+      <div class="mb2"><div class="l">SSC Marks</div><div class="v" style="font-size:17px">${rowData.SSC_Marks ?? '—'}%</div><div class="s">${renderedPercentile(percentiles.SSC_Marks)}th %ile</div></div>
+      <div class="mb2"><div class="l">HSC Marks</div><div class="v" style="font-size:17px">${rowData.HSC_Marks ?? '—'}%</div><div class="s">${renderedPercentile(percentiles.HSC_Marks)}th %ile</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px">
+      <div class="mb2"><div class="l">Extracurricular</div><div class="v" style="font-size:14px;color:${String(rowData.ExtracurricularActivities) === 'Yes' ? 'var(--placed)' : 'var(--fail)'}">${rowData.ExtracurricularActivities ?? '—'}</div></div>
+      <div class="mb2"><div class="l">Placement Training</div><div class="v" style="font-size:14px;color:${String(rowData.PlacementTraining) === 'Yes' ? 'var(--placed)' : 'var(--fail)'}">${rowData.PlacementTraining ?? '—'}</div></div>
+    </div>`;
+
+  const actualBlock = record && record._actual ? `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">
+      <div class="mb2"><div class="l">Actual</div><div class="v" style="font-size:16px">${record._actual}</div></div>
+      <div class="mb2"><div class="l">Correct</div><div class="v" style="font-size:16px;color:${record._correct ? 'var(--placed)' : 'var(--fail)'}">${record._correct ? 'Yes' : 'No'}</div></div>
+    </div>` : '';
+
+  document.getElementById('mo-body').innerHTML = `
+    <div style="text-align:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line)">
+      <div style="font-family:var(--fh);font-size:24px;font-weight:900;color:${labelColor};letter-spacing:-1px">${mainLabel}</div>
+      <div style="font-family:var(--fm);font-size:11px;color:var(--muted);margin-top:4px">${probabilityText}</div>
+      <div style="margin-top:8px">
+        <span class="${statusClass}">${statusLabel}</span>
+      </div>
+      <div style="font-family:var(--fm);font-size:10px;color:var(--muted);margin-top:8px">${source || studentId}</div>
+    </div>
+    ${fieldRows}
+    ${actualBlock}
+    <div style="font-family:var(--fh);font-size:11.5px;font-weight:700;color:var(--violet);margin-bottom:9px">💡 Personalised Suggestions</div>
+    ${(suggestions || []).map(t=>`<div class="tip">${t}</div>`).join('') || '<div class="tip">No suggestions available.</div>'}`;
+}
+
+async function openStu(id){
+  document.getElementById('stu-mo').classList.add('on');
+  document.getElementById('mo-sid').textContent='Student '+id;
+  document.getElementById('mo-body').innerHTML='<div class="ld on" style="padding:28px"><div class="spin"></div> Loading…</div>';
+  const res=await fetch(`${API}/api/student/${id}`);
+  const d=await res.json();
+  openDetailModal({
+    title: `Student ${id}`,
+    record: d.student,
+    prediction: d.prediction,
+    suggestions: d.suggestions,
+    percentiles: d.percentiles,
+    source: 'Student Records',
+  });
+}
+function closeMo(){document.getElementById('stu-mo').classList.remove('on');}
+document.getElementById('stu-mo').addEventListener('click',e=>{if(e.target===e.currentTarget)closeMo();});
+
+/* ═══════════════════════════════════════
+   PREDICT
+═══════════════════════════════════════ */
+async function runPredict(){
+  const body={
+    CGPA:+document.getElementById('p-cgpa').value,
+    SSC_Marks:+document.getElementById('p-ssc').value,
+    HSC_Marks:+document.getElementById('p-hsc').value,
+    AptitudeTestScore:+document.getElementById('p-apt').value,
+    Internships:+document.getElementById('p-int').value,
+    Projects:+document.getElementById('p-proj').value,
+    Workshops_Certifications:+document.getElementById('p-wk').value,
+    SoftSkillsRating:+document.getElementById('p-soft').value,
+    ExtracurricularActivities:document.getElementById('p-extra').value,
+    PlacementTraining:document.getElementById('p-train').value,
+  };
+  document.getElementById('pred-rbox').classList.remove('on');
+  document.getElementById('pred-ld').classList.add('on');
+  const res = await fetch(`${API}/api/predict`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const d = await res.json();
+  document.getElementById('pred-ld').classList.remove('on');
+  const placed = d.prediction==='Placed';
+  document.getElementById('pred-v').textContent    = d.prediction;
+  document.getElementById('pred-v').className      = 'rv '+(placed?'placed':'notplaced');
+  document.getElementById('pred-pct').textContent  = (d.probability*100).toFixed(1)+'%';
+  document.getElementById('pred-ring').style.background = `conic-gradient(${placed?'#34d399':'#fb7185'} ${d.probability*360}deg,#161e2e 0deg)`;
+  const chip = document.getElementById('pred-chip');
+  chip.textContent = 'Confidence: '+d.confidence;
+  chip.className = 'chip '+d.confidence[0];
+  document.getElementById('pred-tips').innerHTML = d.suggestions.map(t=>`<div class="tip">${t}</div>`).join('');
+  document.getElementById('pred-rbox').classList.add('on');
+}
+
+/* ═══════════════════════════════════════
+   UPLOAD CSV
+═══════════════════════════════════════ */
+function dzOver(e){e.preventDefault();document.getElementById('dz').classList.add('drag');}
+function dzLeave(){document.getElementById('dz').classList.remove('drag');}
+function dzDrop(e){e.preventDefault();dzLeave();const f=e.dataTransfer.files[0];if(f)handleFile(f);}
+
+async function handleFile(file){
+  if(!file) return;
+  if(!file.name.endsWith('.csv')){showUpErr('Only CSV files are accepted.');return;}
+
+  /* show file strip */
+  document.getElementById('file-name').textContent = file.name;
+  document.getElementById('file-size').textContent = (file.size/1024).toFixed(1)+' KB';
+  document.getElementById('file-strip').classList.add('on');
+
+  document.getElementById('up-err').classList.remove('on');
+  document.getElementById('up-results').classList.remove('on');
+  document.getElementById('up-ld').classList.add('on');
+
+  /* animate progress bar */
+  const pbar = document.getElementById('prog-bar');
+  const pfill = document.getElementById('prog-fill');
+  pbar.style.display='block'; pfill.style.width='0';
+  let prog=0;
+  const ptmr = setInterval(()=>{prog=Math.min(prog+8,88);pfill.style.width=prog+'%';},200);
+
+  const fd = new FormData();
+  fd.append('file', file);
+  let res, data;
+  try{
+    res  = await fetch(`${API}/api/upload`,{method:'POST',body:fd});
+    data = await res.json();
+  }catch(e){
+    clearInterval(ptmr); pbar.style.display='none';
+    document.getElementById('up-ld').classList.remove('on');
+    showUpErr('Network error — is the Flask server running on port 5000?');
+    return;
+  }
+
+  clearInterval(ptmr); pfill.style.width='100%';
+  setTimeout(()=>{pbar.style.display='none';},500);
+  document.getElementById('up-ld').classList.remove('on');
+
+  if(data.error){
+    showUpErr(data.error+(data.hint?'\nHint: '+data.hint:'')+(data.required_columns?'\nRequired: '+data.required_columns.join(', '):''));
+    return;
+  }
+
+  uResults = data.results;
+  uHasGT   = data.meta.has_ground_truth;
+  renderUpload(data.meta, data.results, data.charts || {});
+}
+
+function showUpErr(msg){
+  const el=document.getElementById('up-err');
+  el.textContent='⚠ '+msg;
+  el.classList.add('on');
+}
+
+function renderUpload(meta, results, chartsData){
+  /* summary cards */
+  document.getElementById('u-total').textContent   = meta.total_rows.toLocaleString();
+  document.getElementById('u-placed').textContent  = meta.predicted_placed.toLocaleString();
+  document.getElementById('u-nplaced').textContent = meta.predicted_notplaced.toLocaleString();
+  document.getElementById('u-prate').textContent   = `${meta.prediction_rate}% prediction rate`;
+  document.getElementById('u-errs').textContent    = meta.parse_errors;
+
+  /* ground truth section */
+  const gtHero = document.getElementById('gt-hero');
+  const cmWrap = document.getElementById('up-cm-wrap');
+  if(meta.has_ground_truth){
+    gtHero.style.display='block';
+    document.getElementById('u-acc-pct').textContent = meta.accuracy+'%';
+    document.getElementById('u-tp').textContent  = meta.tp;
+    document.getElementById('u-tn').textContent  = meta.tn;
+    document.getElementById('u-fp').textContent  = meta.fp;
+    document.getElementById('u-fn').textContent  = meta.fn;
+    document.getElementById('u-prec').textContent= meta.precision+'%';
+    document.getElementById('u-rec').textContent = meta.recall+'%';
+    document.getElementById('u-f1').textContent  = meta.f1+'%';
+    document.getElementById('ucm-tp').textContent= meta.tp;
+    document.getElementById('ucm-tn').textContent= meta.tn;
+    document.getElementById('ucm-fp').textContent= meta.fp;
+    document.getElementById('ucm-fn').textContent= meta.fn;
+    cmWrap.style.display='block';
+    document.getElementById('up-legend').textContent='🟢 border = correct prediction  🔴 border = wrong';
+  } else {
+    gtHero.style.display='none';
+    cmWrap.style.display='none';
+    document.getElementById('up-legend').textContent='';
+  }
+
+  /* charts */
+  mkBar('up-ch-cgpa', chartsData.cgpa_distribution, 'CGPA Range');
+  mkBar('up-ch-int', chartsData.internship_distribution, 'Internships');
+  mkBar('up-ch-proj', chartsData.projects_distribution, 'Projects');
+  mkBar('up-ch-apt', chartsData.aptitude_distribution, 'Aptitude Score');
+
+  if(charts['up-ch-donut']) charts['up-ch-donut'].destroy();
+  charts['up-ch-donut'] = new Chart(document.getElementById('up-ch-donut'),{
+    type:'doughnut',
+    data:{labels:['Placed','Not Placed'],
+          datasets:[{data:[meta.predicted_placed,meta.predicted_notplaced],backgroundColor:['rgba(52,211,153,.78)','rgba(251,113,133,.75)'],borderColor:['#34d399','#fb7185'],borderWidth:2,hoverOffset:6}]},
+    options:{responsive:true,cutout:'68%',plugins:{legend:{labels:{color:'#5a7399',font:{size:12}}}}}
+  });
+
+  const fi  = chartsData.feature_importance || {};
+  const lbl = {CGPA:'CGPA',Internships:'Internships',Projects:'Projects',Workshops_Certifications:'Workshops / Certs',AptitudeTestScore:'Aptitude Test',SoftSkillsRating:'Soft Skills',ExtracurricularActivities_enc:'Extracurricular',PlacementTraining_enc:'Placement Training',SSC_Marks:'SSC Marks',HSC_Marks:'HSC Marks'};
+  const mx  = Math.max(...Object.values(fi), 1);
+  document.getElementById('up-fi-bars').innerHTML = Object.entries(fi).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+    <div class="fi-row">
+      <div class="fi-meta"><span>${lbl[k]||k}</span><span>${(v*100).toFixed(1)}%</span></div>
+      <div class="fi-track"><div class="fi-fill" style="width:${(v/mx*100).toFixed(1)}%"></div></div>
+    </div>`).join('');
+
+  /* table */
+  const display  = results.slice(0,200);
+  const hasStudentId = display.some(r => r.StudentID || r.StudentId || r.student_id);
+
+  const tableRows = display.map((r, i)=>{
+    const rowLabel = r.StudentID || r.StudentId || r.student_id || `Row ${i + 1}`;
+    const trClass = meta.has_ground_truth ? (r._correct ? 'correct-row' : 'wrong-row') : '';
+    return `
+      <tr class="click ${trClass}" onclick="openUploadRow(${i})">
+        <td><span style="font-family:var(--fm);color:var(--sky);font-size:11.5px">${rowLabel}</span></td>
+        <td><strong>${r.CGPA ?? '—'}</strong></td>
+        <td>${r.Internships ?? '—'}</td>
+        <td>${r.Projects ?? '—'}</td>
+        <td>${r.AptitudeTestScore ?? '—'}</td>
+        <td>${r.SoftSkillsRating ?? '—'}</td>
+        <td>${r.SSC_Marks ?? '—'}</td>
+        <td>${r.HSC_Marks ?? '—'}</td>
+        <td><span class="${r._placement_status_tag === 'predictedYes' ? 'bp' : 'bn'}">${r._placement_status_tag}</span></td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('ur-head').innerHTML =
+    '<tr><th>Student ID</th><th>CGPA</th><th>Internships</th><th>Projects</th><th>Aptitude</th><th>Soft Skills</th><th>SSC</th><th>HSC</th><th>Status</th></tr>';
+
+  document.getElementById('ur-body').innerHTML = tableRows;
+
+  document.getElementById('up-results').classList.add('on');
+}
+
+function downloadCSV(){
+  if(!uResults.length) return;
+  const dk = Object.keys(uResults[0]).filter(k=>!k.startsWith('_'));
+  const extra = ['Prediction','placement_status','Probability_%','Confidence','Suggestions'];
+  if(uHasGT) extra.push('Actual','Correct');
+  const rows = uResults.map(r=>[
+    ...dk.map(k=>JSON.stringify(r[k]??'')),
+    r._prediction, r._placement_status_tag, r._probability, r._confidence, JSON.stringify((r._suggestions||[r._suggestion]).join(' | ')),
+    ...(uHasGT?[r._actual||'',r._correct?'Yes':'No']:[])
+  ]);
+  const csv = [[...dk,...extra].join(','),...rows.map(r=>r.join(','))].join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='placement_predictions.csv';a.click();
+}
+
+/* ═══════════════════════════════════════
+   GITHUB
+═══════════════════════════════════════ */
+async function analyzeGH(){
+  const u=document.getElementById('gh-in').value.trim();
+  if(!u) return;
+  document.getElementById('gh-err').classList.remove('on');
+  document.getElementById('gh-card').classList.remove('on');
+  document.getElementById('gh-ld').classList.add('on');
+  
+  const res=await fetch(`${API}/api/github-predict/${u}`);
+  const d=await res.json();
+  document.getElementById('gh-ld').classList.remove('on');
+  
+  if(d.error){document.getElementById('gh-err').textContent='⚠ '+d.error;document.getElementById('gh-err').classList.add('on');return;}
+
+  const gp = d.github_profile;
+  const pp = d.placement_prediction;
+  
+  // Profile info
+  document.getElementById('gh-av').src   = gp.avatar_url;
+  document.getElementById('gh-name').textContent = gp.name||gp.username;
+  document.getElementById('gh-un').textContent   = `@${gp.username}${gp.location?' · 📍 '+gp.location:''}`;
+  document.getElementById('gh-bio').textContent  = gp.bio||'';
+  document.getElementById('gh-fol').textContent  = gp.followers;
+  document.getElementById('gh-fing').textContent = gp.following;
+  document.getElementById('gh-repo').textContent = gp.public_repos;
+  document.getElementById('gh-star').textContent = gp.total_stars;
+
+  // GitHub Score Arc
+  document.getElementById('sc-arc').style.strokeDashoffset = 201-(gp.github_score/100)*201;
+  document.getElementById('sc-txt').textContent = gp.github_score;
+
+  // Placement Score Arc
+  const placementProb = pp.probability;
+  document.getElementById('pp-arc').style.strokeDashoffset = 201-(placementProb/100)*201;
+  document.getElementById('pp-txt').textContent = Math.round(placementProb);
+
+  // Languages
+  const mxL = gp.top_languages[0]?.count||1;
+  document.getElementById('gh-langs').innerHTML = gp.top_languages.length
+    ? gp.top_languages.map((l,i)=>`<div class="li"><span class="ln">${l.lang}</span><div class="lb"><div class="lbf" style="width:${(l.count/mxL*100).toFixed(0)}%;background:${LC[i%LC.length]}"></div></div><span class="lp">${l.count}</span></div>`).join('')
+    : '<div style="color:var(--muted);font-size:12px">No data</div>';
+
+  // Repos
+  document.getElementById('gh-repos-list').innerHTML = gp.top_repos.length
+    ? gp.top_repos.map(r=>`<div class="ri"><div class="ri-name"><a href="${r.url}" target="_blank" style="color:inherit;text-decoration:none">${r.name}</a></div>${r.description?`<div class="ri-desc">${r.description.slice(0,70)}</div>`:''}<div class="ri-meta">${r.language?`<span>⬅ ${r.language}</span>`:''}<span>⭐${r.stars}</span><span>🍴${r.forks}</span></div></div>`).join('')
+    : '<div style="color:var(--muted);font-size:12px">No repositories</div>';
+
+  // GitHub improvements
+  document.getElementById('gh-impr').innerHTML = d.all_suggestions.github_improvements.length
+    ? d.all_suggestions.github_improvements.map(t=>`<div class="tip">${t}</div>`).join('')
+    : '<div style="color:var(--placed);font-size:12.5px">✅ Great GitHub profile! Keep it up.</div>';
+
+  // Combined strategy - linking GitHub to placement
+  const combined = generateCombinedStrategy(gp, pp);
+  document.getElementById('gh-combined').innerHTML = combined.map(t=>`<div class="tip">${t}</div>`).join('');
+
+  document.getElementById('gh-card').classList.add('on');
+}
+
+function generateCombinedStrategy(ghProfile, placementPred) {
+  const tips = [];
+  const repos = ghProfile.public_repos;
+  const stars = ghProfile.total_stars;
+  const langs = ghProfile.top_languages.length;
+  const followers = ghProfile.followers;
+  const ghScore = ghProfile.github_score;
+  const placementProb = placementPred.probability;
+
+  // Link GitHub metrics to placement odds
+  if(repos < 5) {
+    tips.push('🔗 Build 5+ quality projects on GitHub → Demonstrates consistent coding → Boosts placement confidence to 70%+');
+  }
+  if(stars < 10) {
+    tips.push('⭐ Aim for 10+ stars on projects → Shows production-ready code → Increases placement probability by 15-20%');
+  }
+  if(langs < 3) {
+    tips.push('💻 Learn 3+ languages (Python, JavaScript, Java) → Broader skillset → Improves placement score by 10-15%');
+  }
+  if(followers < 50) {
+    tips.push('👥 Build network to 50+ followers → Active community engagement → Correlates with higher placement success (80%+)');
+  }
+  if(ghScore < 60) {
+    tips.push('🎯 Increase GitHub score to 60+ → Fix profile README, add descriptions, contribute to open-source → Likely placement odds 75%+');
+  } else if(ghScore < 80) {
+    tips.push('🚀 Push GitHub score to 80+ → 10+ repos with stars + diverse skills → Can reach 85%+ placement probability');
+  } else {
+    tips.push('🏆 Excellent GitHub presence! → With this score ('+ghScore+'), placement probability is '+Math.round(placementProb)+'% → Focus on DSA & interview prep');
+  }
+
+  if(placementProb >= 80) {
+    tips.push('✨ HIGH LIKELIHOOD OF PLACEMENT! Your GitHub profile is strong. Prepare for: resume optimization, mock interviews, coding rounds.');
+  } else if(placementProb >= 60) {
+    tips.push('📈 GOOD CHANCES! Your GitHub shows promise. Action items: 1 more internship, 1-2 more projects, practice aptitude tests.');
+  } else {
+    tips.push('⚡ GROWTH OPPORTUNITY! GitHub is a strong foundation. Next steps: Add 2-3 projects, build portfolio, strengthen soft skills through mock interviews.');
+  }
+
+  return tips.length > 0 ? tips : ['Complete your GitHub profile to get personalized recommendations.'];
+}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+loadDashboard();
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+{
+  "total_students": 10000,
+  "train_size": 8000,
+  "test_size": 2000,
+  "placed": 6200,
+  "not_placed": 3800,
+  "placement_rate": 0.62,
+  "avg_cgpa": 7.498096,
+  "avg_aptitude": 71.98215,
+  "avg_soft_skills": 3.49301,
+  "model_accuracy": 0.865,
+  "model_f1": 0.8651016972318137,
+  "model_roc_auc": 0.9432035229202037,
+  "cv_mean": 0.8651250000000001,
+  "cv_std": 0.0064879696361804795,
+  "cv_scores": [
+    0.874375,
+    0.87,
+    0.865,
+    0.856875,
+    0.859375
+  ],
+  "confusion_matrix": [
+    [
+      628,
+      132
+    ],
+    [
+      138,
+      1102
+    ]
+  ],
+  "feature_importance": {
+    "CGPA": 0.13113561364772677,
+    "Internships": 0.3215382279163125,
+    "Projects": 0.17315067198357864,
+    "Workshops_Certifications": 0.05723410002207663,
+    "AptitudeTestScore": 0.07316352525657584,
+    "SoftSkillsRating": 0.04851115663434309,
+    "ExtracurricularActivities_enc": 0.0321050578240256,
+    "PlacementTraining_enc": 0.08793345697626541,
+    "SSC_Marks": 0.036643603539922034,
+    "HSC_Marks": 0.038584586199173626
+  },
+  "features": [
+    "CGPA",
+    "Internships",
+    "Projects",
+    "Workshops_Certifications",
+    "AptitudeTestScore",
+    "SoftSkillsRating",
+    "ExtracurricularActivities_enc",
+    "PlacementTraining_enc",
+    "SSC_Marks",
+    "HSC_Marks"
+  ],
+  "classes": [
+    "NotPlaced",
+    "Placed"
+  ]
+}
