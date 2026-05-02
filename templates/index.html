@@ -958,6 +958,56 @@ function mkBar(id, d, xLabel){
   });
 }
 
+function validatePredictInputs(){
+  const fields = [
+    { id: 'p-cgpa', label: 'CGPA', min: 5, max: 10 },
+    { id: 'p-ssc', label: 'SSC Marks', min: 40, max: 100 },
+    { id: 'p-hsc', label: 'HSC Marks', min: 40, max: 100 },
+    { id: 'p-apt', label: 'Aptitude Score', min: 40, max: 100 },
+    { id: 'p-soft', label: 'Soft Skills', min: 1, max: 5 },
+  ];
+
+  for(const field of fields){
+    const input = document.getElementById(field.id);
+    const raw = input.value.trim();
+    if(raw === ''){
+      alert(`${field.label} is required.`);
+      input.focus();
+      return false;
+    }
+    const value = Number(raw);
+    if(Number.isNaN(value)){
+      alert(`${field.label} must be a valid number.`);
+      input.focus();
+      return false;
+    }
+    if(value < field.min || value > field.max){
+      alert(`${field.label} must be between ${field.min} and ${field.max}.`);
+      input.focus();
+      return false;
+    }
+  }
+
+  const selectFields = [
+    { id: 'p-int', label: 'Internships' },
+    { id: 'p-proj', label: 'Projects' },
+    { id: 'p-wk', label: 'Workshops / Certs' },
+    { id: 'p-extra', label: 'Extracurricular' },
+    { id: 'p-train', label: 'Placement Training' },
+  ];
+
+  for(const field of selectFields){
+    const el = document.getElementById(field.id);
+    if(el.value === '' || el.value === null){
+      alert(`${field.label} is required.`);
+      el.focus();
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /* ═══════════════════════════════════════
    STUDENTS
 ═══════════════════════════════════════ */
@@ -1122,6 +1172,8 @@ document.getElementById('stu-mo').addEventListener('click',e=>{if(e.target===e.c
    PREDICT
 ═══════════════════════════════════════ */
 async function runPredict(){
+  if(!validatePredictInputs()) return;
+
   const body={
     CGPA:+document.getElementById('p-cgpa').value,
     SSC_Marks:+document.getElementById('p-ssc').value,
@@ -1136,9 +1188,22 @@ async function runPredict(){
   };
   document.getElementById('pred-rbox').classList.remove('on');
   document.getElementById('pred-ld').classList.add('on');
-  const res = await fetch(`${API}/api/predict`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  const d = await res.json();
+  let res, d;
+  try{
+    res = await fetch(`${API}/api/predict`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    d = await res.json();
+  }catch(err){
+    document.getElementById('pred-ld').classList.remove('on');
+    alert('Network error while running prediction. Please make sure the Flask server is running.');
+    return;
+  }
   document.getElementById('pred-ld').classList.remove('on');
+
+  if(!res.ok){
+    alert(d.error || 'Prediction failed. Please check the input values.');
+    return;
+  }
+
   const placed = d.prediction==='Placed';
   document.getElementById('pred-v').textContent    = d.prediction;
   document.getElementById('pred-v').className      = 'rv '+(placed?'placed':'notplaced');
